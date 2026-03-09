@@ -8,7 +8,7 @@ import PaymentMethodStep from "@/components/citizen/PaymentMethodStep";
 import PaymentDetailStep from "@/components/citizen/PaymentDetailStep";
 import ProcessingStep from "@/components/citizen/ProcessingStep";
 import ConfirmationStep from "@/components/citizen/ConfirmationStep";
-import { useApp } from "@/context/AppContext";
+import { useApp, Adeudo } from "@/context/AppContext";
 
 const STEP_LABELS = ["Bienvenida", "Adeudos", "Método", "Detalle", "Proceso", "Listo"];
 
@@ -18,6 +18,8 @@ const CitizenPortal = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"tarjeta" | "spei" | "wallet" | null>(null);
   const [cardLabel, setCardLabel] = useState<string | null>(null);
+  const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
+  const [confirmedAdeudos, setConfirmedAdeudos] = useState<Adeudo[]>([]);
 
   const adeudosPendientes = ciudadanoActual.adeudos.filter(
     (a) => a.estatus === "vencido" || a.estatus === "proximo"
@@ -36,12 +38,16 @@ const CitizenPortal = () => {
     setSelectedIds([]);
     setPaymentMethod(null);
     setCardLabel(null);
+    setConfirmedTotal(0);
+    setConfirmedAdeudos([]);
   };
 
   const handleProcessingComplete = useCallback(() => {
+    setConfirmedTotal(total);
+    setConfirmedAdeudos(selectedAdeudos);
     selectedAdeudos.forEach((a) => payAdeudo(ciudadanoActual.numeroCuenta, a.id));
     setStep(6);
-  }, [selectedAdeudos, payAdeudo, ciudadanoActual.numeroCuenta]);
+  }, [selectedAdeudos, total, payAdeudo, ciudadanoActual.numeroCuenta]);
 
   return (
     <div className="min-h-screen gradient-surface flex flex-col">
@@ -88,8 +94,8 @@ const CitizenPortal = () => {
           {step === 5 && <ProcessingStep onComplete={handleProcessingComplete} />}
           {step === 6 && paymentMethod && (
             <ConfirmationStep
-              selectedAdeudos={selectedAdeudos}
-              total={total}
+              selectedAdeudos={confirmedAdeudos}
+              total={confirmedTotal}
               method={paymentMethod}
               cardLabel={cardLabel}
               numeroCuenta={ciudadanoActual.numeroCuenta}
