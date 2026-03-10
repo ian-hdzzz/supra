@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { CreditCard, Building2, Smartphone } from "lucide-react";
+import { CreditCard, Building2, Smartphone, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type PaymentMethod = "tarjeta" | "spei" | "wallet";
+type PaymentMethod = "tarjeta" | "spei" | "wallet" | "oxxo";
 
 interface PaymentMethodStepProps {
   method: PaymentMethod | null;
@@ -31,6 +31,12 @@ const PaymentMethodStep = ({ method, onSelect, onNext, onBack }: PaymentMethodSt
       icon: Smartphone,
       title: "Pago Digital",
       description: "Apple Pay o Google Pay",
+    },
+    {
+      id: "oxxo" as const,
+      icon: Store,
+      title: "OXXO PAY",
+      description: "Paga con código QR en cualquier tienda OXXO",
     },
   ];
 

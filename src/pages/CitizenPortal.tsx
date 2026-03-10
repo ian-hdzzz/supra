@@ -16,7 +16,7 @@ const CitizenPortal = () => {
   const { ciudadanoActual, payAdeudo } = useApp();
   const [step, setStep] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"tarjeta" | "spei" | "wallet" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"tarjeta" | "spei" | "wallet" | "oxxo" | null>(null);
   const [cardLabel, setCardLabel] = useState<string | null>(null);
   const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
   const [confirmedAdeudos, setConfirmedAdeudos] = useState<Adeudo[]>([]);

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { CreditCard, Copy, Check, Plus, Smartphone, ChevronRight } from "lucide-react";
+import { CreditCard, Copy, Check, Plus, Smartphone, ChevronRight, Loader2, AlertCircle, Store } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,7 @@ import { Adeudo, SavedCard, SavedWallet, useApp } from "@/context/AppContext";
 import { cn } from "@/lib/utils";
 
 interface PaymentDetailStepProps {
-  method: "tarjeta" | "spei" | "wallet";
+  method: "tarjeta" | "spei" | "wallet" | "oxxo";
   selectedAdeudos: Adeudo[];
   total: number;
   onConfirm: (label?: string) => void;
@@ -159,6 +160,63 @@ const CardForm = ({ onSave, onCancel, showCancel }: CardFormProps) => {
   );
 };
 
+// ── OXXO QR Code (SVG decorativo con patrones reales de QR) ──────────────────
+
+const OxxoQRCode = ({ seed }: { seed: string }) => {
+  const N = 25;
+  const hash = seed.split("").reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) | 0, 5381);
+  const rand = (idx: number) => (((Math.imul(hash ^ (idx * 2654435761 | 0), 1540483477)) >>> 17) & 1) === 1;
+
+  const finderCell = (r: number, c: number, or_: number, oc: number): boolean | null => {
+    const dr = r - or_, dc = c - oc;
+    if (dr < 0 || dr > 6 || dc < 0 || dc > 6) return null;
+    if (dr === 0 || dr === 6 || dc === 0 || dc === 6) return true;
+    if (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4) return true;
+    return false;
+  };
+
+  const cells = Array.from({ length: N }, (_, r) =>
+    Array.from({ length: N }, (_, c): boolean => {
+      const tl = finderCell(r, c, 0, 0);
+      if (tl !== null) return tl;
+      const tr = finderCell(r, c, 0, N - 7);
+      if (tr !== null) return tr;
+      const bl = finderCell(r, c, N - 7, 0);
+      if (bl !== null) return bl;
+
+      // Separators
+      if ((r === 7 && c <= 7) || (c === 7 && r <= 7)) return false;
+      if ((r === 7 && c >= N - 8) || (c === N - 8 && r <= 7)) return false;
+      if ((r === N - 8 && c <= 7) || (c === 7 && r >= N - 8)) return false;
+
+      // Timing patterns
+      if (r === 6 && c >= 8 && c <= N - 9) return c % 2 === 0;
+      if (c === 6 && r >= 8 && r <= N - 9) return r % 2 === 0;
+
+      // Alignment pattern at (18, 18)
+      const ar = Math.abs(r - 18), ac = Math.abs(c - 18);
+      if (ar <= 2 && ac <= 2) {
+        if (ar === 0 && ac === 0) return true;
+        if (ar === 2 || ac === 2) return true;
+        return false;
+      }
+
+      return rand(r * N + c);
+    })
+  );
+
+  return (
+    <svg viewBox={`0 0 ${N + 4} ${N + 4}`} className="w-full h-full" role="img" aria-label="Código QR OXXO PAY">
+      <rect width={N + 4} height={N + 4} fill="white" />
+      {cells.map((row, r) =>
+        row.map((dark, c) =>
+          dark ? <rect key={`${r}-${c}`} x={c + 2} y={r + 2} width={1} height={1} fill="#1a1a1a" /> : null
+        )
+      )}
+    </svg>
+  );
+};
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const PaymentDetailStep = ({
@@ -170,6 +228,10 @@ const PaymentDetailStep = ({
 }: PaymentDetailStepProps) => {
   const { savedCards, savedWallets, saveCard, saveWallet } = useApp();
   const [copied, setCopied] = useState(false);
+  const [speiAttempts, setSpeiAttempts] = useState(0);
+  const [speiVerifying, setSpeiVerifying] = useState(false);
+  const [oxxoAttempts, setOxxoAttempts] = useState(0);
+  const [oxxoVerifying, setOxxoVerifying] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(
     savedCards.length > 0 ? savedCards[0].id : null
   );
@@ -186,10 +248,50 @@ const PaymentDetailStep = ({
   const clabeRef = "014180655032875695";
   const referencia = `${selectedAdeudos[0]?.id ?? "SON"}-MAR25`.toUpperCase();
 
+  // Referencia OXXO PAY: 18 dígitos determinísticos basados en el adeudo y monto
+  const oxxoRefBase = selectedAdeudos.reduce((s, a) => s + a.id.charCodeAt(0) * 31, 0) % 100000000;
+  const oxxoRef = `9300${String(oxxoRefBase).padStart(8, "0")}${String(Math.round(total * 100)).padStart(6, "0")}`.slice(0, 18);
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSpeiVerify = () => {
+    if (speiVerifying) return;
+    setSpeiVerifying(true);
+    setTimeout(() => {
+      setSpeiVerifying(false);
+      if (speiAttempts === 0) {
+        setSpeiAttempts(1);
+        toast.error("No se encontró el pago", {
+          description: "La transferencia SPEI aún no se refleja en el sistema. Verifica que hayas enviado el monto exacto con la referencia correcta e intenta de nuevo.",
+          icon: <AlertCircle className="w-4 h-4" />,
+          duration: 5000,
+        });
+      } else {
+        onConfirm("SPEI");
+      }
+    }, 2200);
+  };
+
+  const handleOxxoVerify = () => {
+    if (oxxoVerifying) return;
+    setOxxoVerifying(true);
+    setTimeout(() => {
+      setOxxoVerifying(false);
+      if (oxxoAttempts === 0) {
+        setOxxoAttempts(1);
+        toast.error("Pago no encontrado en OXXO", {
+          description: "El pago en tienda OXXO aún no se ha reflejado. Asegúrate de haber completado el pago y espera unos minutos antes de reintentar.",
+          icon: <AlertCircle className="w-4 h-4" />,
+          duration: 5000,
+        });
+      } else {
+        onConfirm("OXXO PAY");
+      }
+    }, 2200);
   };
 
   // ── Tarjeta ──
@@ -336,7 +438,7 @@ const PaymentDetailStep = ({
             </div>
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Realiza la transferencia desde tu banca en línea y haz clic en "Confirmar pago" cuando la hayas completado.
+            Realiza la transferencia desde tu banca en línea y haz clic en "Verificar pago" cuando la hayas completado.
           </p>
         </div>
       )}
@@ -420,6 +522,54 @@ const PaymentDetailStep = ({
         </div>
       )}
 
+      {/* ── OXXO PAY ── */}
+      {method === "oxxo" && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <Store className="w-5 h-5 text-[#DA0F2E]" />
+            OXXO PAY — Código QR
+          </h2>
+
+          <div className="flex flex-col items-center gap-4 bg-card border border-border rounded-xl p-6">
+            <div className="w-48 h-48 rounded-xl overflow-hidden border-2 border-border shadow-sm">
+              <OxxoQRCode seed={oxxoRef} />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-xs text-muted-foreground">Referencia de pago</p>
+              <p className="font-mono font-bold text-foreground text-sm tracking-widest">
+                {oxxoRef.match(/.{1,6}/g)?.join("  ")}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Monto a pagar</p>
+              <p className="font-bold text-primary text-2xl mt-0.5">${total.toFixed(2)} MXN</p>
+            </div>
+          </div>
+
+          <div className="bg-[#DA0F2E]/5 border border-[#DA0F2E]/20 rounded-xl p-4 space-y-2.5">
+            <p className="text-sm font-semibold text-[#DA0F2E]">¿Cómo pagar en OXXO?</p>
+            {[
+              "Ve a cualquier tienda OXXO",
+              'Dile al cajero: "Quiero pagar un servicio OXXO PAY"',
+              "Muestra el código QR o proporciona la referencia",
+              "Paga el monto exacto en efectivo",
+              "Guarda tu ticket como comprobante",
+            ].map((paso, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                <span className="w-5 h-5 rounded-full bg-[#DA0F2E]/15 text-[#DA0F2E] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  {i + 1}
+                </span>
+                <span>{paso}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Una vez pagado en caja, haz clic en "Verificar pago" para confirmar tu transacción.
+          </p>
+        </div>
+      )}
+
       {/* Botones de acción */}
       <div className="flex gap-3 mt-2">
         <Button variant="outline" onClick={onBack} className="flex-1 h-12 rounded-xl">
@@ -438,13 +588,26 @@ const PaymentDetailStep = ({
           </Button>
         )}
 
-        {/* SPEI: confirmar directo */}
+        {/* SPEI: verificar pago (falla primer intento, éxito en segundo) */}
         {method === "spei" && (
           <Button
-            onClick={() => onConfirm("SPEI")}
-            className="flex-1 h-12 rounded-xl gradient-primary text-primary-foreground font-semibold shadow-elevated hover:shadow-glow transition-all"
+            onClick={handleSpeiVerify}
+            disabled={speiVerifying}
+            className="flex-1 h-12 rounded-xl gradient-primary text-primary-foreground font-semibold shadow-elevated hover:shadow-glow transition-all disabled:opacity-70"
           >
-            Confirmar pago
+            {speiVerifying ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Verificando...
+              </>
+            ) : speiAttempts === 1 ? (
+              <>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Reintentar verificación
+              </>
+            ) : (
+              "Verificar pago"
+            )}
           </Button>
         )}
 
@@ -456,6 +619,29 @@ const PaymentDetailStep = ({
             className="flex-1 h-12 rounded-xl gradient-primary text-primary-foreground font-semibold shadow-elevated hover:shadow-glow transition-all disabled:opacity-50"
           >
             {showNewWalletForm ? "Vincular y pagar" : "Confirmar y pagar"}
+          </Button>
+        )}
+
+        {/* OXXO PAY: verificar pago (falla primer intento, éxito en segundo) */}
+        {method === "oxxo" && (
+          <Button
+            onClick={handleOxxoVerify}
+            disabled={oxxoVerifying}
+            className="flex-1 h-12 rounded-xl gradient-primary text-primary-foreground font-semibold shadow-elevated hover:shadow-glow transition-all disabled:opacity-70"
+          >
+            {oxxoVerifying ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Verificando...
+              </>
+            ) : oxxoAttempts === 1 ? (
+              <>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Reintentar verificación
+              </>
+            ) : (
+              "Verificar pago"
+            )}
           </Button>
         )}
       </div>

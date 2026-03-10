@@ -6,15 +6,16 @@ import { Adeudo } from "@/context/AppContext";
 interface ConfirmationStepProps {
   selectedAdeudos: Adeudo[];
   total: number;
-  method: "tarjeta" | "spei" | "wallet";
+  method: "tarjeta" | "spei" | "wallet" | "oxxo";
   cardLabel: string | null;
   numeroCuenta: string;
   onReset: () => void;
 }
 
-const methodLabel = (method: "tarjeta" | "spei" | "wallet", cardLabel: string | null) => {
+const methodLabel = (method: "tarjeta" | "spei" | "wallet" | "oxxo", cardLabel: string | null) => {
   if (method === "tarjeta") return cardLabel ?? "Tarjeta";
   if (method === "spei") return "SPEI";
+  if (method === "oxxo") return "OXXO PAY";
   return cardLabel ?? "Pago Digital";
 };
 

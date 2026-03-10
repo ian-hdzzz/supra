@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, Pencil, Phone, Mail, Calendar, MapPin, Cpu, Receipt, CreditCard, Banknote, ArrowLeftRight, CheckCircle, Bell, BellOff, Loader2, Printer, X } from "lucide-react";
+import { ChevronRight, FileText, Pencil, Phone, Mail, Calendar, MapPin, Cpu, Receipt, CreditCard, Banknote, ArrowLeftRight, CheckCircle, Bell, BellOff, Loader2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
@@ -458,11 +458,18 @@ const AdminClienteDetalle = ({ numeroCuenta, onBack }: AdminClienteDetalleProps)
             </span>
             <div className="flex items-center gap-2">
               <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                onClick={handleSendReminder}
+                disabled={ciudadano.reminderSent || sending}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Printer className="w-3.5 h-3.5" />
-                Imprimir / PDF
+                {sending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : ciudadano.reminderSent ? (
+                  <BellOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Bell className="w-3.5 h-3.5" />
+                )}
+                {sending ? "Enviando..." : ciudadano.reminderSent ? "Recordatorio enviado" : "Enviar Recordatorio"}
               </button>
               <button
                 onClick={() => setShowEstado(false)}
