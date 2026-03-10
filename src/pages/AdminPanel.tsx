@@ -41,7 +41,7 @@ const AdminPanel = () => {
             <Droplets className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-base leading-tight">SAPA</p>
+            <p className="font-bold text-gray-900 text-base leading-tight">SUPRA</p>
             <p className="text-xs text-gray-400">Agua Potable</p>
           </div>
         </div>

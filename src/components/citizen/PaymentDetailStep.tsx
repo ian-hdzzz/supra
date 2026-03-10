@@ -328,7 +328,7 @@ const PaymentDetailStep = ({
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Beneficiario</p>
-              <p className="font-semibold text-foreground">SAPA Hermosillo — Gobierno Municipal</p>
+              <p className="font-semibold text-foreground">SUPRA Hermosillo — Gobierno Municipal</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Monto exacto</p>

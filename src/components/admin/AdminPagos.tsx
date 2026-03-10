@@ -3,12 +3,12 @@ import { Search, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const pagosData = [
-  { folio: "#SAPA-88210", initials: "MT", nombre: "Maria Guadalupe Torres", cuenta: "SON-2024-00847", monto: 596.0, metodo: "Tarjeta", periodos: "Mar-Abr 2025", fecha: "24 Mayo 2024", hora: "14:30" },
-  { folio: "#SAPA-88209", initials: "RH", nombre: "Roberto Hernández P.", cuenta: "SON-2024-01210", monto: 842.0, metodo: "Efectivo", periodos: "Ene-Feb 2025", fecha: "24 Mayo 2024", hora: "13:15" },
-  { folio: "#SAPA-88208", initials: "AG", nombre: "Alicia García Mendoza", cuenta: "SON-2024-00654", monto: 1205.0, metodo: "Tarjeta", periodos: "Nov-Dic 2024", fecha: "24 Mayo 2024", hora: "12:45" },
-  { folio: "#SAPA-88207", initials: "JS", nombre: "Juan Sanchez Ruiz", cuenta: "SON-2024-00389", monto: 430.0, metodo: "Transf.", periodos: "Ene-Feb 2025", fecha: "24 Mayo 2024", hora: "11:20" },
-  { folio: "#SAPA-88206", initials: "LF", nombre: "Lucía Fernández", cuenta: "SON-2024-01284", monto: 315.0, metodo: "Tarjeta", periodos: "Mar-Abr 2025", fecha: "23 Mayo 2024", hora: "16:05" },
-  { folio: "#SAPA-88205", initials: "JP", nombre: "Juan Carlos Pérez", cuenta: "SON-2024-00912", monto: 450.0, metodo: "Efectivo", periodos: "Nov-Dic 2024", fecha: "23 Mayo 2024", hora: "10:50" },
+  { folio: "#SUPRA-88210", initials: "MT", nombre: "Maria Guadalupe Torres", cuenta: "SON-2024-00847", monto: 596.0, metodo: "Tarjeta", periodos: "Mar-Abr 2025", fecha: "24 Mayo 2024", hora: "14:30" },
+  { folio: "#SUPRA-88209", initials: "RH", nombre: "Roberto Hernández P.", cuenta: "SON-2024-01210", monto: 842.0, metodo: "Efectivo", periodos: "Ene-Feb 2025", fecha: "24 Mayo 2024", hora: "13:15" },
+  { folio: "#SUPRA-88208", initials: "AG", nombre: "Alicia García Mendoza", cuenta: "SON-2024-00654", monto: 1205.0, metodo: "Tarjeta", periodos: "Nov-Dic 2024", fecha: "24 Mayo 2024", hora: "12:45" },
+  { folio: "#SUPRA-88207", initials: "JS", nombre: "Juan Sanchez Ruiz", cuenta: "SON-2024-00389", monto: 430.0, metodo: "Transf.", periodos: "Ene-Feb 2025", fecha: "24 Mayo 2024", hora: "11:20" },
+  { folio: "#SUPRA-88206", initials: "LF", nombre: "Lucía Fernández", cuenta: "SON-2024-01284", monto: 315.0, metodo: "Tarjeta", periodos: "Mar-Abr 2025", fecha: "23 Mayo 2024", hora: "16:05" },
+  { folio: "#SUPRA-88205", initials: "JP", nombre: "Juan Carlos Pérez", cuenta: "SON-2024-00912", monto: 450.0, metodo: "Efectivo", periodos: "Nov-Dic 2024", fecha: "23 Mayo 2024", hora: "10:50" },
 ];
 
 const metodoBadge: Record<string, string> = {

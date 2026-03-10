@@ -12,10 +12,10 @@ const weeklyData = [
 ];
 
 const recentPayments = [
-  { folio: "#SAPA-88210", initials: "MT", nombre: "Maria Guadalupe Torres", monto: 596.0, metodo: "Tarjeta", fecha: "24 Mayo, 14:30" },
-  { folio: "#SAPA-88209", initials: "RH", nombre: "Roberto Hernández P.", monto: 842.0, metodo: "Efectivo", fecha: "24 Mayo, 13:15" },
-  { folio: "#SAPA-88208", initials: "AG", nombre: "Alicia García Mendoza", monto: 1205.0, metodo: "Tarjeta", fecha: "24 Mayo, 12:45" },
-  { folio: "#SAPA-88207", initials: "JS", nombre: "Juan Sanchez Ruiz", monto: 430.0, metodo: "Transf.", fecha: "24 Mayo, 11:20" },
+  { folio: "#SUPRA-88210", initials: "MT", nombre: "Maria Guadalupe Torres", monto: 596.0, metodo: "Tarjeta", fecha: "24 Mayo, 14:30" },
+  { folio: "#SUPRA-88209", initials: "RH", nombre: "Roberto Hernández P.", monto: 842.0, metodo: "Efectivo", fecha: "24 Mayo, 13:15" },
+  { folio: "#SUPRA-88208", initials: "AG", nombre: "Alicia García Mendoza", monto: 1205.0, metodo: "Tarjeta", fecha: "24 Mayo, 12:45" },
+  { folio: "#SUPRA-88207", initials: "JS", nombre: "Juan Sanchez Ruiz", monto: 430.0, metodo: "Transf.", fecha: "24 Mayo, 11:20" },
 ];
 
 const metodoBadge: Record<string, string> = {

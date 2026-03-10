@@ -1,8 +1,13 @@
-import { ChevronRight, FileText, Pencil, Phone, Mail, Calendar, MapPin, Cpu, Receipt, CreditCard, Banknote, ArrowLeftRight, CheckCircle, Bell, BellOff, Loader2 } from "lucide-react";
+import { ChevronRight, FileText, Pencil, Phone, Mail, Calendar, MapPin, Cpu, Receipt, CreditCard, Banknote, ArrowLeftRight, CheckCircle, Bell, BellOff, Loader2, Printer, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/context/AppContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const clientesDetalle: Record<string, {
   nombre: string;
@@ -105,6 +110,76 @@ const AdminClienteDetalle = ({ numeroCuenta, onBack }: AdminClienteDetalleProps)
     (a) => a.estatus === "vencido" || a.estatus === "proximo"
   );
   const [sending, setSending] = useState(false);
+  const [showEstado, setShowEstado] = useState(false);
+  const estadoRef = useRef<HTMLDivElement>(null);
+
+  const fechaGeneracion = new Date().toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const horaGeneracion = new Date().toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const totalPagado = cliente.pagos.reduce((s, p) => s + p.monto, 0);
+  const totalAdeudado = cliente.adeudos
+    .filter((a) => a.estatus !== "pagado")
+    .reduce((s, a) => s + a.monto, 0);
+
+  const handlePrint = () => {
+    if (!estadoRef.current) return;
+    const content = estadoRef.current.innerHTML;
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      toast.error("No se pudo abrir la ventana de impresión.");
+      return;
+    }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Estado de Cuenta — ${cliente.nombre}</title>
+        <style>
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 32px; }
+          .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 16px; margin-bottom: 24px; }
+          .print-logo { font-size: 22px; font-weight: 800; color: #2563eb; letter-spacing: -0.5px; }
+          .print-logo span { color: #1d4ed8; }
+          .print-meta { text-align: right; font-size: 11px; color: #555; }
+          .print-meta strong { display: block; font-size: 16px; color: #111; margin-bottom: 4px; }
+          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #2563eb; margin: 20px 0 8px; border-bottom: 1px solid #dbeafe; padding-bottom: 4px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+          .info-item label { font-size: 10px; text-transform: uppercase; color: #888; display: block; margin-bottom: 2px; }
+          .info-item value { font-size: 13px; font-weight: 600; color: #111; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          th { background: #eff6ff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #2563eb; padding: 7px 10px; text-align: left; }
+          td { padding: 7px 10px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+          tr:last-child td { border-bottom: none; }
+          .badge-pagado { background: #dcfce7; color: #166534; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+          .badge-proximo { background: #dbeafe; color: #1d4ed8; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+          .totals-row { background: #f8fafc; font-weight: 700; }
+          .summary-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+          .summary-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }
+          .summary-card .label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+          .summary-card .value { font-size: 20px; font-weight: 800; color: #111; }
+          .summary-card .sub { font-size: 10px; color: #2563eb; margin-top: 2px; }
+          .print-footer { border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 12px; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
+          @media print {
+            body { padding: 16px; }
+            @page { margin: 1.5cm; }
+          }
+        </style>
+      </head>
+      <body>${content}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 400);
+  };
 
   const handleSendReminder = () => {
     if (ciudadano.reminderSent || sending) return;
@@ -153,7 +228,10 @@ const AdminClienteDetalle = ({ numeroCuenta, onBack }: AdminClienteDetalleProps)
             <Pencil className="w-4 h-4 text-blue-500" />
             Editar Datos
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          <button
+            onClick={() => setShowEstado(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
             <FileText className="w-4 h-4" />
             Generar Estado de Cuenta
           </button>
@@ -367,6 +445,185 @@ const AdminClienteDetalle = ({ numeroCuenta, onBack }: AdminClienteDetalleProps)
           </div>
         </div>
       </div>
+
+      {/* Estado de Cuenta Dialog */}
+      <Dialog open={showEstado} onOpenChange={setShowEstado}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogTitle className="sr-only">Estado de Cuenta</DialogTitle>
+          {/* Toolbar */}
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-500" />
+              Estado de Cuenta
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Imprimir / PDF
+              </button>
+              <button
+                onClick={() => setShowEstado(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Printable content */}
+          <div ref={estadoRef} className="p-8 space-y-6">
+            {/* Header */}
+            <div className="print-header flex justify-between items-start border-b-2 border-blue-600 pb-5">
+              <div>
+                <p className="text-2xl font-extrabold text-blue-600 tracking-tight">SUPRA</p>
+                <p className="text-xs text-gray-400 mt-0.5">Sistema Unificado de Recaudación y Agua</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-gray-900">Estado de Cuenta</p>
+                <p className="text-xs text-gray-500 mt-1">Generado el {fechaGeneracion} a las {horaGeneracion}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Folio: {cliente.cuenta}-{new Date().getFullYear()}</p>
+              </div>
+            </div>
+
+            {/* Customer info */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3 border-b border-blue-100 pb-1">
+                Datos del Titular
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Nombre completo</p>
+                  <p className="text-sm font-semibold text-gray-900">{cliente.nombre}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Número de Cuenta</p>
+                  <p className="text-sm font-semibold text-blue-600">{cliente.cuenta}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Estatus</p>
+                  <p className={`text-sm font-semibold ${cliente.estatusColor}`}>{cliente.estatusLabel}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Dirección</p>
+                  <p className="text-sm text-gray-700">{cliente.direccion}</p>
+                  <p className="text-xs text-gray-500">{cliente.ciudad}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Teléfono</p>
+                  <p className="text-sm text-gray-700">{cliente.telefono}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase mb-0.5">Correo electrónico</p>
+                  <p className="text-sm text-gray-700">{cliente.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary cards */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3 border-b border-blue-100 pb-1">
+                Resumen de Cuenta
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="border border-gray-200 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-400 uppercase mb-1">Saldo Pendiente</p>
+                  <p className="text-2xl font-extrabold text-gray-900">${totalAdeudado.toFixed(2)}</p>
+                  <p className="text-xs text-blue-500 mt-1">{cliente.periodoPendiente}</p>
+                </div>
+                <div className="border border-gray-200 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-400 uppercase mb-1">Total Pagado</p>
+                  <p className="text-2xl font-extrabold text-gray-900">${totalPagado.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{cliente.pagos.length} pago(s) registrado(s)</p>
+                </div>
+                <div className="border border-gray-200 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-400 uppercase mb-1">Último Pago</p>
+                  <p className="text-2xl font-extrabold text-gray-900">${cliente.ultimoPago.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{cliente.fechaUltimoPago}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Adeudos table */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3 border-b border-blue-100 pb-1">
+                Historial de Adeudos
+              </p>
+              <table className="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
+                <thead>
+                  <tr className="bg-blue-50 text-left">
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Bimestre</th>
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Monto</th>
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cliente.adeudos.map((a) => (
+                    <tr key={a.bimestre} className="border-t border-gray-100">
+                      <td className="px-4 py-2.5 text-gray-700">{a.bimestre}</td>
+                      <td className="px-4 py-2.5 font-semibold text-gray-900">${a.monto.toFixed(2)}</td>
+                      <td className="px-4 py-2.5">
+                        {a.estatus === "pagado" ? (
+                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">PAGADO</span>
+                        ) : (
+                          <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">PRÓXIMO</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                    <td className="px-4 py-2.5 font-bold text-gray-900" colSpan={1}>Total pendiente</td>
+                    <td className="px-4 py-2.5 font-extrabold text-blue-700">${totalAdeudado.toFixed(2)}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagos table */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3 border-b border-blue-100 pb-1">
+                Historial de Pagos
+              </p>
+              <table className="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
+                <thead>
+                  <tr className="bg-blue-50 text-left">
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Folio</th>
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Monto</th>
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Método</th>
+                    <th className="px-4 py-2.5 text-xs font-bold text-blue-700 uppercase tracking-wide">Fecha / Hora</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cliente.pagos.map((p) => (
+                    <tr key={p.folio} className="border-t border-gray-100">
+                      <td className="px-4 py-2.5 font-mono text-gray-700">{p.folio}</td>
+                      <td className="px-4 py-2.5 font-semibold text-gray-900">${p.monto.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-gray-600">{p.metodo}</td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {p.fecha} <span className="text-gray-400 text-xs">{p.hora}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-gray-200 bg-gray-50">
+                    <td className="px-4 py-2.5 font-bold text-gray-900">Total pagado</td>
+                    <td className="px-4 py-2.5 font-extrabold text-green-700">${totalPagado.toFixed(2)}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="print-footer border-t border-gray-200 pt-4 flex justify-between items-center text-xs text-gray-400">
+              <span>SUPRA — Sistema Unificado de Recaudación y Agua</span>
+              <span>Documento generado el {fechaGeneracion} · {horaGeneracion}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

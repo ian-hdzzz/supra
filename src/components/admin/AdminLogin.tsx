@@ -36,7 +36,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">Panel Administrativo</h1>
-            <p className="text-sm text-muted-foreground">Servicios de Agua · SAPA</p>
+            <p className="text-sm text-muted-foreground">Servicios de Agua · SUPRA</p>
           </div>
         </div>
 
