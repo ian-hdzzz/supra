@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Droplets, LayoutDashboard, Users, History, Settings, Bell, Search } from "lucide-react";
+import { Droplets, LayoutDashboard, Users, History, Settings, Bell, Search, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminClientes from "@/components/admin/AdminClientes";
 import AdminPagos from "@/components/admin/AdminPagos";
 import AdminClienteDetalle from "@/components/admin/AdminClienteDetalle";
+import AdminContratos from "@/components/admin/AdminContratos";
 import { Input } from "@/components/ui/input";
 
-type AdminView = "dashboard" | "clientes" | "historial" | "configuracion" | "clienteDetalle";
+type AdminView = "dashboard" | "clientes" | "historial" | "contratos" | "configuracion" | "clienteDetalle";
 
 const AdminPanel = () => {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -21,6 +22,7 @@ const AdminPanel = () => {
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
     { id: "clientes" as const, label: "Clientes/Cuentas", icon: Users },
     { id: "historial" as const, label: "Historial de Pagos", icon: History },
+    { id: "contratos" as const, label: "Contratos", icon: FileText },
     { id: "configuracion" as const, label: "Configuración", icon: Settings },
   ];
 
@@ -121,6 +123,7 @@ const AdminPanel = () => {
           )}
           {view === "clientes" && <AdminClientes onVerCliente={handleVerCliente} />}
           {view === "historial" && <AdminPagos />}
+          {view === "contratos" && <AdminContratos />}
           {view === "clienteDetalle" && selectedCuenta && (
             <AdminClienteDetalle
               numeroCuenta={selectedCuenta}
