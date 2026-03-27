@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Contrato {
+  id              Int       @id @default(autoincrement())
+  numeroContrato  String    @unique @map("numero_contrato")
+  nombreTitular   String    @map("nombre_titular")
+  calle           String
+  numero          String
+  colonia         String
+  municipio       String
+  cp              String
+  tarifa          String    @default("Doméstico")
+  estado          String    @default("activo") // activo | cortado | suspendido
+  fechaAlta       DateTime  @map("fecha_alta") @db.Date
+  numeroMedidor   String    @map("numero_medidor")
+  ultimaLectura   String    @map("ultima_lectura")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  facturas        Factura[]
+  consumos        Consumo[]
+  clientes        Cliente[]
+  tickets         Ticket[]
+
+  @@map("contratos")
+}
+
+model Factura {
+  id               Int      @id @default(autoincrement())
+  contratoId       Int      @map("contrato_id")
+  numFactura       String   @map("num_factura")
+  ciclo            String
+  fechaVencimiento DateTime @map("fecha_vencimiento") @db.Date
+  importeTotal     Decimal  @map("importe_total") @db.Decimal(10, 2)
+  estado           String   @default("pendiente") // pendiente | vencido | pagado
+  periodo          Int      // 1-12 (mes)
+  anio             Int      @map("anio")
+  pdfData          String?  @map("pdf_data") // base64 placeholder
+
+  contrato         Contrato @relation(fields: [contratoId], references: [id])
+
+  @@map("facturas")
+}
+
+model Consumo {
+  id               Int      @id @default(autoincrement())
+  contratoId       Int      @map("contrato_id")
+  anio             Int      @map("anio")
+  periodo          String   // "ENE", "FEB", etc.
+  fechaLectura     DateTime @map("fecha_lectura") @db.Date
+  metrosCubicos    Decimal  @map("metros_cubicos") @db.Decimal(10, 2)
+  lecturaActual    Decimal  @map("lectura_actual") @db.Decimal(10, 2)
+  lecturaAnterior  Decimal  @map("lectura_anterior") @db.Decimal(10, 2)
+  estimado         Boolean  @default(false)
+
+  contrato         Contrato @relation(fields: [contratoId], references: [id])
+
+  @@map("consumos")
+}
+
+model Cliente {
+  id              Int      @id @default(autoincrement())
+  nombre          String
+  email           String?
+  telefono        String?
+  whatsapp        String?
+  contratoNumero  String   @map("contrato_numero")
+  reciboDigital   Boolean  @default(false) @map("recibo_digital")
+  identifier      String?
+
+  contrato        Contrato @relation(fields: [contratoNumero], references: [numeroContrato])
+
+  @@map("clientes")
+}
+
+model TicketCategoria {
+  id              Int                  @id @default(autoincrement())
+  codigo          String               @unique
+  nombre          String
+  subcategorias   TicketSubcategoria[]
+  tickets         Ticket[]
+
+  @@map("ticket_categorias")
+}
+
+model TicketSubcategoria {
+  id           Int             @id @default(autoincrement())
+  categoriaId  Int             @map("categoria_id")
+  codigo       String          @unique
+  nombre       String
+  categoria    TicketCategoria @relation(fields: [categoriaId], references: [id])
+  tickets      Ticket[]
+
+  @@map("ticket_subcategorias")
+}
+
+model Ticket {
+  id               Int                 @id @default(autoincrement())
+  folio            String              @unique
+  contratoNumero   String?             @map("contrato_numero")
+  conversationId   String?             @map("conversation_id")
+  categoriaId      Int?                @map("categoria_id")
+  subcategoriaId   Int?                @map("subcategoria_id")
+  titulo           String
+  descripcion      String?
+  estado           String              @default("abierto") // abierto | en_proceso | cerrado
+  prioridad        String              @default("media")   // baja | media | alta
+  tipoServicio     String?             @map("tipo_servicio")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  contrato         Contrato?           @relation(fields: [contratoNumero], references: [numeroContrato])
+  categoria        TicketCategoria?    @relation(fields: [categoriaId], references: [id])
+  subcategoria     TicketSubcategoria? @relation(fields: [subcategoriaId], references: [id])
+
+  @@map("tickets")
+}
+
+model Ubicacion {
+  id             Int    @id @default(autoincrement())
+  nombre         String
+  tipo           String // oficina | cajero | autopago
+  direccionCalle String @map("direccion_calle")
+  colonia        String
+  municipio      String
+  latitud        Decimal @db.Decimal(10, 7)
+  longitud       Decimal @db.Decimal(10, 7)
+  horario        Json?  // { lun_vie: "...", sab: "...", dom: "..." }
+  telefono       String?
+  servicios      String?
+  notas          String?
+
+  @@map("ubicaciones")
+}
