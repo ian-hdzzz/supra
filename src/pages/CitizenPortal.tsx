@@ -21,9 +21,9 @@ const CitizenPortal = () => {
   const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
   const [confirmedAdeudos, setConfirmedAdeudos] = useState<Adeudo[]>([]);
 
-  const adeudosPendientes = ciudadanoActual.adeudos.filter(
-    (a) => a.estatus === "vencido" || a.estatus === "proximo"
-  );
+  const adeudosPendientes = ciudadanoActual
+    ? ciudadanoActual.adeudos.filter(a => a.estatus === "vencido" || a.estatus === "proximo")
+    : [];
   const selectedAdeudos = adeudosPendientes.filter((a) => selectedIds.includes(a.id));
   const total = selectedAdeudos.reduce((sum, a) => sum + a.monto, 0);
 
@@ -45,9 +45,11 @@ const CitizenPortal = () => {
   const handleProcessingComplete = useCallback(() => {
     setConfirmedTotal(total);
     setConfirmedAdeudos(selectedAdeudos);
-    selectedAdeudos.forEach((a) => payAdeudo(ciudadanoActual.numeroCuenta, a.id));
+    if (ciudadanoActual) {
+      selectedAdeudos.forEach((a) => payAdeudo(ciudadanoActual.numeroCuenta, a.id));
+    }
     setStep(6);
-  }, [selectedAdeudos, total, payAdeudo, ciudadanoActual.numeroCuenta]);
+  }, [selectedAdeudos, total, payAdeudo, ciudadanoActual]);
 
   return (
     <div className="min-h-screen gradient-surface flex flex-col">
@@ -98,7 +100,7 @@ const CitizenPortal = () => {
               total={confirmedTotal}
               method={paymentMethod}
               cardLabel={cardLabel}
-              numeroCuenta={ciudadanoActual.numeroCuenta}
+              numeroCuenta={ciudadanoActual?.numeroCuenta ?? ""}
               onReset={handleReset}
             />
           )}

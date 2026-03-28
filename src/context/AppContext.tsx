@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { api, FacturaAPI } from "@/lib/api";
 
 export interface Adeudo {
   id: string;
@@ -30,26 +31,29 @@ export interface Ciudadano {
   reminderSent: boolean;
 }
 
-const initialCiudadanos: Ciudadano[] = [
-  {
-    numeroCuenta: "SON-2024-00847",
-    nombre: "María Guadalupe Torres Hernández",
-    direccion: "Calle Reforma #142, Col. Centro, Hermosillo, Sonora",
-    telefono: "662-123-4567",
-    reminderSent: false,
-    adeudos: [
-      { id: "ad-001", periodo: "Nov – Dic 2024", fechaLimite: "15 Ene 2025", monto: 284.0, estatus: "vencido" },
-      { id: "ad-002", periodo: "Ene – Feb 2025", fechaLimite: "15 Mar 2025", monto: 312.0, estatus: "vencido" },
-      { id: "ad-003", periodo: "Mar – Abr 2025", fechaLimite: "15 May 2025", monto: 298.0, estatus: "proximo" },
-    ],
-  },
-];
+function facturaToAdeudo(f: FacturaAPI): Adeudo {
+  return {
+    id: f.numFactura,
+    periodo: f.ciclo,
+    fechaLimite: new Date(f.fechaVencimiento).toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+    monto: f.importeTotal,
+    estatus: f.estadoTexto === "pendiente" ? "proximo" : f.estadoTexto,
+  };
+}
 
 interface AppContextType {
   ciudadanos: Ciudadano[];
-  ciudadanoActual: Ciudadano;
+  ciudadanoActual: Ciudadano | null;
   savedCards: SavedCard[];
   savedWallets: SavedWallet[];
+  buscando: boolean;
+  errorBusqueda: string | null;
+  buscarContrato: (numero: string) => Promise<void>;
+  limpiarContrato: () => void;
   payAdeudo: (numeroCuenta: string, adeudoId: string) => void;
   sendReminder: (numeroCuenta: string) => void;
   saveCard: (card: SavedCard) => void;
@@ -58,72 +62,105 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const initialSavedCards: SavedCard[] = [
-  { id: "card-415942-4532", label: "Visa •••• 4532", brand: "visa", last4: "4532" },
-  { id: "card-541500-8721", label: "Mastercard •••• 8721", brand: "mastercard", last4: "8721" },
-];
-
-const initialSavedWallets: SavedWallet[] = [
-  { id: "wallet-apple-mgth@icloud.com", type: "apple", email: "mgth@icloud.com" },
-];
+const initialSavedCards: SavedCard[] = [];
+const initialSavedWallets: SavedWallet[] = [];
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [ciudadanos, setCiudadanos] = useState<Ciudadano[]>(initialCiudadanos);
+  const [ciudadanos, setCiudadanos] = useState<Ciudadano[]>([]);
+  const [ciudadanoActual, setCiudadanoActual] = useState<Ciudadano | null>(null);
   const [savedCards, setSavedCards] = useState<SavedCard[]>(initialSavedCards);
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>(initialSavedWallets);
+  const [buscando, setBuscando] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
 
-  const ciudadanoActual = ciudadanos[0];
+  const buscarContrato = async (numero: string) => {
+    setBuscando(true);
+    setErrorBusqueda(null);
+    try {
+      const [contrato, deuda, cliente] = await Promise.allSettled([
+        api.getContrato(numero),
+        api.getDeuda(numero),
+        api.getCliente(numero),
+      ]);
+
+      if (contrato.status === "rejected") {
+        throw new Error("Contrato no encontrado");
+      }
+
+      const c = (contrato as PromiseFulfilledResult<typeof contrato extends PromiseFulfilledResult<infer T> ? T : never>).value;
+      const d = deuda.status === "fulfilled" ? deuda.value : null;
+      const cl = cliente.status === "fulfilled" ? cliente.value : null;
+
+      const adeudos: Adeudo[] = d ? d.facturas.map(facturaToAdeudo) : [];
+
+      const ciudadano: Ciudadano = {
+        numeroCuenta: (c as any).contrato,
+        nombre: (c as any).nombreTitular,
+        direccion: (c as any).direccion,
+        telefono: cl ? (cl as any).telefono || "" : "",
+        adeudos,
+        reminderSent: false,
+      };
+
+      setCiudadanoActual(ciudadano);
+      setCiudadanos(prev => {
+        const exists = prev.find(x => x.numeroCuenta === ciudadano.numeroCuenta);
+        return exists ? prev.map(x => x.numeroCuenta === ciudadano.numeroCuenta ? ciudadano : x) : [...prev, ciudadano];
+      });
+    } catch (err: any) {
+      setErrorBusqueda(err.message || "No se encontró el contrato");
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const limpiarContrato = () => {
+    setCiudadanoActual(null);
+    setErrorBusqueda(null);
+  };
 
   const payAdeudo = (numeroCuenta: string, adeudoId: string) => {
-    setCiudadanos((prev) =>
-      prev.map((c) =>
+    const update = (prev: Ciudadano[]) =>
+      prev.map(c =>
         c.numeroCuenta === numeroCuenta
-          ? {
-              ...c,
-              adeudos: c.adeudos.map((a) =>
-                a.id === adeudoId ? { ...a, estatus: "pagado" as const } : a
-              ),
-            }
+          ? { ...c, adeudos: c.adeudos.map(a => a.id === adeudoId ? { ...a, estatus: "pagado" as const } : a) }
           : c
-      )
+      );
+    setCiudadanos(update);
+    setCiudadanoActual(prev =>
+      prev?.numeroCuenta === numeroCuenta
+        ? { ...prev, adeudos: prev.adeudos.map(a => a.id === adeudoId ? { ...a, estatus: "pagado" as const } : a) }
+        : prev
     );
   };
 
   const sendReminder = (numeroCuenta: string) => {
-    setCiudadanos((prev) =>
-      prev.map((c) =>
-        c.numeroCuenta === numeroCuenta ? { ...c, reminderSent: true } : c
-      )
-    );
+    setCiudadanos(prev => prev.map(c => c.numeroCuenta === numeroCuenta ? { ...c, reminderSent: true } : c));
   };
 
   const saveCard = (card: SavedCard) => {
-    setSavedCards((prev) => {
-      const exists = prev.find((c) => c.id === card.id);
-      return exists ? prev : [...prev, card];
-    });
+    setSavedCards(prev => prev.find(c => c.id === card.id) ? prev : [...prev, card]);
   };
 
   const saveWallet = (wallet: SavedWallet) => {
-    setSavedWallets((prev) => {
-      const exists = prev.find((w) => w.id === wallet.id);
-      return exists ? prev : [...prev, wallet];
-    });
+    setSavedWallets(prev => prev.find(w => w.id === wallet.id) ? prev : [...prev, wallet]);
   };
 
   return (
-    <AppContext.Provider
-      value={{
-        ciudadanos,
-        ciudadanoActual,
-        savedCards,
-        savedWallets,
-        payAdeudo,
-        sendReminder,
-        saveCard,
-        saveWallet,
-      }}
-    >
+    <AppContext.Provider value={{
+      ciudadanos,
+      ciudadanoActual,
+      savedCards,
+      savedWallets,
+      buscando,
+      errorBusqueda,
+      buscarContrato,
+      limpiarContrato,
+      payAdeudo,
+      sendReminder,
+      saveCard,
+      saveWallet,
+    }}>
       {children}
     </AppContext.Provider>
   );
